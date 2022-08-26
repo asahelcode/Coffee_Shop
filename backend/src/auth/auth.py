@@ -34,17 +34,29 @@ class AuthError(Exception):
 '''
 def get_token_auth_header():
     if 'Authorization' not in request.headers:
-        abort(401)
+        raise AuthError({
+            'code': 'Invalid claim',
+            'description': 'Authorization not set in header'
+        }, 401)
     auth_header = request.headers['Authorization']
     header_parts = auth_header.split(' ')
-    if len (header_parts) != 2:
-        abort (401)
+    
+    if len (header_parts) > 2:
+        raise AuthError({
+            'code': 'Invalid header',
+            'description': 'Incorrect header'
+        }, 401)
     elif header_parts[0].lower() != 'bearer':
-        abort(401)
+        raise AuthError({
+            'code': 'Invalid authentication type',
+            'description': 'Bearer type not present'
+        }, 401)
 
-    print(header_parts, file=sys.stderr)
-
-    return header_parts [1]
+#     print(header_parts, file=sys.stderr)
+    
+    token = header_parts[1]
+    
+    return token
     #raise Exception('Not Implemented')
 
 '''
@@ -61,7 +73,7 @@ def get_token_auth_header():
 def check_permissions(permission, payload):
     if 'permissions' not in payload:
                         raise AuthError({
-                            'code': 'invalid_claims',
+                            'code': 'invalid claim',
                             'description': 'Permissions not included in JWT.'
                         }, 400)
 
@@ -165,10 +177,8 @@ def requires_auth(permission=''):
             except:
                 print('ERROR: TOKEN VALIDATION FAILED', file=sys.stderr)
                 abort(401)
-            try: 
+                
                 check_permissions(permission, payload)
-            except:
-                abort(403)
             return f(payload, *args, **kwargs)
         return wrapper
     return requires_auth_decorator
